@@ -77,10 +77,9 @@ where book_id in (
     from bkorders.order_details
     group by book_id
     having sum(quantity*order_price) >= ALL (
-	    select top (1) sum(quantity*order_price)
+	    select sum(quantity*order_price)
 		from bkorders.order_details
 		group by book_id
-		order by sum(quantity*order_price) desc
 		)
     )
 order by book_id
