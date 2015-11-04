@@ -5,7 +5,7 @@ GO
 /*  TASK 00 */
 Select getdate(), @@servername as ServerName,  @@version as VersionNumber;
 
-GO
+GO 
 /*  TASK 01 */
 
 GO
