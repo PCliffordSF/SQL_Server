@@ -4,7 +4,7 @@ use    a_books;
 GO
 /*  TASK 00 */
 Select getdate(), @@servername as ServerName,  @@version as VersionNumber;
-GO
+GO -- git is pretty cool
 
 /*  TASK 01 */
 
