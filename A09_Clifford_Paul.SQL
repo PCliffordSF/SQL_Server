@@ -32,7 +32,7 @@ GO
     , cust_name_last + ', ' + cust_name_first as c_name
     from bkorders.BkOrdersPriorYear
     where Order_Month = 3
-INTERSECT
+INTERSECT 
     select c_id
     , cust_name_last + ', ' + cust_name_first as c_name
     from bkorders.BkOrdersPriorYear
