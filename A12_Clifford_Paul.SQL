@@ -190,33 +190,166 @@ GrandTotal   Total           3083       89372.42
 
 */
 
-with group_roll_up as (
-	select BKBA.author_id
-	, BKB.book_id
-	, quantity
-	, order_price
-	, order_id
-	, BKOD.quantity*order_price as Extended_Price
-	from bkinfo.book_authors as BKBA
-	INNER JOIN bkinfo.books as BKB ON BKB.book_id = BKBA.book_id
-	LEFT JOIN bkorders.order_details as BKOD ON BKOD.book_id = BKB.book_id
-	where author_id < 'J'
-	group by BKB.book_id, BKBA.author_id, quantity, order_price, order_id
-)
-select coalesce(author_id, 'Grand Total') as 'Author ID'
 
+with cte1 as (
+
+	select author_id
+	, BKOD.book_id
+	, sum(quantity) as quantity
+	, sum(quantity*order_price) as order_total
+	from bkinfo.book_authors as BKA
+	LEFT JOIN bkorders.order_details as BKOD ON BKOD.book_id = BKA.book_id
+	group by BKOD.book_id, author_id, author_sequence
+	having author_id < 'J' and author_sequence = 1
+), cte2 as (
+	select author_id
+	, book_id
+	, sum(quantity) as quantity
+	, sum(order_total) as order_total
+	from cte1
+	group by rollup(author_id, book_id)
+)
+select case when cast(author_id as varchar) is null then 'GrandTotal' else author_id end as 'Author ID'
 , case when author_id is null and book_id is null then ''
 when book_id is null then 'Total' 
 else cast(book_id as varchar) end as 'Book ID'
+, case when quantity is null then 0 else quantity end as 'Total - Quantity'
+, case when cast(quantity as varchar) is null then 'No Sales' else cast(order_total as varchar) end as 'Total Sales'
+from cte2
+GO;
 
-, ISNULL(sum(quantity),0) as 'Total - Quantity'
-, ISNULL(cast(sum(Extended_Price) as varchar), 'No sales') as 'Total - Sales'
-from group_roll_up
-group by rollup(author_id, book_id)
-order by author_id, book_id desc
 
+-----------------------------
 
 /*  TASK 06 */
+
+/*
+
+Calculate a 5 day moving sum and moving average for total sales of books; use current row and 2 
+days preceding and 2 days following.  For example, the data for the 11th of the month would use the 
+data for the 5 day span of the 9th, 10th, 11th,12th, and 13th
+Limit your query to orders placed in March 2014 and display a row for each day in March 2105 even 
+if we have no sales that day. Display 0 for days where there are no sales 
+The display has the layout shown below. Display the order date, total sales for that date, the 5 day 
+sum and the 5 day average. The result is in order date order. 
+This sample output uses data that are not in your tables. Your report does not round sales.   
+Date         TotalSales   5 DaySUM   5 DayAvg 
+------------ ---------- ---------- ---------- 
+2015-03-01      400.00     860.00     286.67 2
+015-03-02      310.00   2,110.00     527.50 
+2015-03-03      150.00   3,110.00     622.00 
+2015-03-04    1,250.00   2,710.00     542.00 
+2015-03-05    1,000.00   2,400.00     480.00 
+2015-03-06        0.00   2,250.00     450.00 
+2015-03-07        0.00   1,000.00     200.00  
+. . .  continue to the end of the month 
+
+*/
+
+if object_id('calendar') is not null
+    drop table calendar;
+
+Create Table calendar (
+  sales_day date Primary Key
+); 
+GO
+
+Insert Into calendar Values 
+('2014-02-27'),
+('2014-02-28'),
+('2014-03-01'),
+('2014-03-02'),
+('2014-03-03'),
+('2014-03-04'),
+('2014-03-05'),
+('2014-03-06'),
+('2014-03-07'),
+('2014-03-08'),
+('2014-03-09'),
+('2014-03-10'),
+('2014-03-11'),
+('2014-03-12'),
+('2014-03-13'),
+('2014-03-14'),
+('2014-03-15'),
+('2014-03-16'),
+('2014-03-17'),
+('2014-03-18'),
+('2014-03-19'),
+('2014-03-20'),
+('2014-03-21'),
+('2014-03-22'),
+('2014-03-23'),
+('2014-03-24'),
+('2014-03-25'),
+('2014-03-26'),
+('2014-03-27'),
+('2014-03-28'),
+('2014-03-29'),
+('2014-03-30'),
+('2014-03-31'),
+('2014-04-01'),
+('2014-04-02');
+
+; with cte1 as (
+	select sales_day
+	, sum(quantity*order_price) as TotalSales
+	from dbo.calendar as Cal
+	LEFT JOIN bkorders.order_headers as BKOH ON BKOH.order_date = Cal.sales_day
+	LEFT JOIN bkorders.order_details BKOD ON BKOD.order_id = BKOH.order_id 
+	group by sales_day, BKOH.order_id
+), cte as (
+	select
+	sales_day
+	, case when datepart(m,sales_day) <> 3 then 0
+	  when TotalSales is null then 0
+	  else TotalSales end as TotalSales
+	from cte1
+)
+/*
+select 
+sales_day
+, TotalSales
+from cte
+order by sales_day
+*/
+
+select
+t1.sales_day
+, t1.TotalSales
+, sum(t2.TotalSales) as ThreeDaySum 
+from cte as t1
+join cte as t2 
+	ON t2.sales_day < dateadd(dd, 3, t1.sales_day)
+and t2.sales_day >= t1.sales_day 
+group by t1.sales_day, t1.TotalSales
+order by sales_day
+
+
+
+
+
+
+
+
+
+select author_id
+, BKOD.book_id
+, author_sequence
+, quantity
+, order_price
+from bkinfo.book_authors as BKA
+INNER JOIN bkorders.order_details as BKOD ON BKOD.book_id = BKA.book_id
+--group by BKOD.book_id, author_id, author_sequence
+where author_id < 'J' and author_sequence = 1
+group by rollup(author_id
+
+
+;
+
+
+
+
 
 
 GO
@@ -244,7 +377,7 @@ select book_id
 ,round(sum(quantity*order_price),0)
 from bkorders.order_details
 group by book_id
-)
+);
 
 --------\
 
@@ -291,3 +424,30 @@ GO
 	having BKB.book_id = BKOD.book_id
 	 )
 	 ) as Book
+
+	 ----------- this was my first attempt at number 5 and the point when I realized (i.e. was advised ;-) ) to use two ctes
+
+	 with group_roll_up as (
+	select BKBA.author_id
+	, BKB.book_id
+	, quantity
+	, order_price
+	, order_id
+	, BKOD.quantity*order_price as Extended_Price
+	from bkinfo.book_authors as BKBA
+	INNER JOIN bkinfo.books as BKB ON BKB.book_id = BKBA.book_id
+	LEFT JOIN bkorders.order_details as BKOD ON BKOD.book_id = BKB.book_id
+	where author_id < 'J'
+	group by BKB.book_id, BKBA.author_id, quantity, order_price, order_id
+)
+select coalesce(author_id, 'Grand Total') as 'Author ID'
+
+, case when author_id is null and book_id is null then ''
+when book_id is null then 'Total' 
+else cast(book_id as varchar) end as 'Book ID'
+
+, ISNULL(sum(quantity),0) as 'Total - Quantity'
+, ISNULL(cast(sum(Extended_Price) as varchar), 'No sales') as 'Total - Sales'
+from group_roll_up
+group by rollup(author_id, book_id)
+order by author_id, book_id desc
