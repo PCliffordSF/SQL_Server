@@ -1,7 +1,7 @@
 /* Paul Clifford */
 
 use    -- db.name;
-GO
+GO;
 /*  TASK 00 */
 Select getdate(), @@servername as ServerName,  @@version as VersionNumber;
 
@@ -89,7 +89,7 @@ Sales-Ranking  Book                      Total-Sales
 
 
 with rankings as (
-	select  DENSE_RANK() over (order by round(sum(quantity*order_price),0) desc) as SalesRanking
+	select  RANK() over (order by round(sum(quantity*order_price),0) desc) as SalesRanking
 	, BKB.book_id
 	, BKB.title
 	, round(sum(quantity*order_price),0) as OrderTotal
@@ -210,8 +210,7 @@ with cte1 as (
 	group by rollup(author_id, book_id)
 )
 select case when cast(author_id as varchar) is null then 'GrandTotal' else author_id end as 'Author ID'
-, case when author_id is null and book_id is null then ''
-when book_id is null then 'Total' 
+,case when book_id is null then 'Total' 
 else cast(book_id as varchar) end as 'Book ID'
 , case when quantity is null then 0 else quantity end as 'Total - Quantity'
 , case when cast(quantity as varchar) is null then 'No Sales' else cast(order_total as varchar) end as 'Total Sales'
@@ -246,84 +245,117 @@ Date         TotalSales   5 DaySUM   5 DayAvg
 
 */
 
-if object_id('calendar') is not null
-    drop table calendar;
+declare @start  date;
+set @start  = '02-28-2014';
 
-Create Table calendar (
-  sales_day date Primary Key
-); 
-GO
+declare @stop  date;
+set @stop = '03/31/2014';
 
-Insert Into calendar Values 
-('2014-02-27'),
-('2014-02-28'),
-('2014-03-01'),
-('2014-03-02'),
-('2014-03-03'),
-('2014-03-04'),
-('2014-03-05'),
-('2014-03-06'),
-('2014-03-07'),
-('2014-03-08'),
-('2014-03-09'),
-('2014-03-10'),
-('2014-03-11'),
-('2014-03-12'),
-('2014-03-13'),
-('2014-03-14'),
-('2014-03-15'),
-('2014-03-16'),
-('2014-03-17'),
-('2014-03-18'),
-('2014-03-19'),
-('2014-03-20'),
-('2014-03-21'),
-('2014-03-22'),
-('2014-03-23'),
-('2014-03-24'),
-('2014-03-25'),
-('2014-03-26'),
-('2014-03-27'),
-('2014-03-28'),
-('2014-03-29'),
-('2014-03-30'),
-('2014-03-31'),
-('2014-04-01'),
-('2014-04-02');
-
-; with cte1 as (
-	select sales_day
-	, sum(quantity*order_price) as TotalSales
-	from dbo.calendar as Cal
-	LEFT JOIN bkorders.order_headers as BKOH ON BKOH.order_date = Cal.sales_day
-	LEFT JOIN bkorders.order_details BKOD ON BKOD.order_id = BKOH.order_id 
-	group by sales_day, BKOH.order_id
-), cte as (
-	select
-	sales_day
-	, case when datepart(m,sales_day) <> 3 then 0
-	  when TotalSales is null then 0
-	  else TotalSales end as TotalSales
-	from cte1
+With calMarch14 as(
+select  dtm
+from (
+   select dateadd(d, ROW_NUMBER()over (order by num), @start)  as dtm
+   from
+     ( 
+	  select 1 as num  
+       from (select 1 as n ) tbl0 
+       group by cube(n, n, n, n, n, n, n, n)
+      ) tbl  
+   ) tbl2
+where  dtm <= @stop
+), marchTotal as (
+	select BKOH.order_date
+	, quantity
+	, order_price
+    , sum(quantity*order_price) as TotalSales
+	from bkorders.order_headers as BKOH
+	INNER JOIN bkorders.order_details BKOD ON BKOD.order_id = BKOH.order_id 
+	group by order_date, quantity, order_price
+), calJoin as (
+select dtm as MarchDates
+, case when sum(TotalSales) is null then 0 else sum(TotalSales) end as TotalSales
+from calMarch14 as CM14
+LEFT JOIN marchTotal as MT ON MT.order_date = CM14.dtm
+group by TotalSales, dtm
 )
-/*
-select 
-sales_day
-, TotalSales
-from cte
-order by sales_day
-*/
+select t1.MarchDates
+, t1.TotalSales as TotalSales
+--, t2.TotalSales as t2total
+, sum(t2.TotalSales) as '5 DaySum' 
+, cast(sum(t2.TotalSales) as decimal(10 ,2))/5 as '5 Day Avg'
+from calJoin as t1
+JOIN calJoin as t2 ON t2.MarchDates < dateadd(dd, 2, t1.MarchDates)
+AND t2.MarchDates >= dateadd(dd, -2, t1.MarchDates)
+group by t1.MarchDates, t1.TotalSales
+order by t1.MarchDates
+
+
+
+
+
+
+
+
+
+
 
 select
-t1.sales_day
-, t1.TotalSales
+, t1.TotalSales as t1total
+, t2.TotalSales as t2total
 , sum(t2.TotalSales) as ThreeDaySum 
 from cte as t1
-join cte as t2 
-	ON t2.sales_day < dateadd(dd, 3, t1.sales_day)
-and t2.sales_day >= t1.sales_day 
-group by t1.sales_day, t1.TotalSales
-order by sales_day
+cr join cte as t2 
+	ON t2.sales_day = t1.sales_day
+group by t1.sales_day, t1.TotalSales, t2.sales_day, t2.TotalSales
+order by t1.sales_day
+
+
+
+declare @start  date;
+set @start  = '03-01-2014';
+
+declare @stop  date;
+set @stop = '03/31/2014';
+
+With calMarch14 as(
+select  dtm
+from (
+   select dateadd(d, ROW_NUMBER()over (order by num), @start)  as dtm
+   from
+     ( 
+	  select 1 as num  
+       from (select 1 as n ) tbl0 
+       group by cube(n, n, n, n, n, n, n, n)
+      ) tbl  
+   ) tbl2
+where  dtm <= @stop
+)
+, 
+ordersJune2015 as (
+   select cast(ord_date  as date) as ord_date , count(*)  OrderCount
+   from a_altgeld_mart.oe.order_headers 
+   where year(ord_date) = 2015 and month(ord_date) = 6
+   group by ord_date
+)
+select dtm as JuneDates, OrderCount
+from calJune2015
+left join  ordersJune2015 on calJune2015.dtm = ordersJune2015.ord_date
+order by JuneDates;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
