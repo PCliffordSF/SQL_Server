@@ -10,7 +10,10 @@ exec sp_helpText booksize
 exec sp_helpText prevmonth  
 
 
-/*  TASK 00 */ Select getdate(), @@version; GO  
+/*  TASK 00 */ 
+
+Select getdate(), @@version; 
+GO  
 
 /*  TASK 01 */ 
 IF OBJECT_ID (N'dbo.booksize') IS NOT NULL
@@ -158,18 +161,16 @@ GO
 
 
 With  myTestData as(
-      select 1 as tstRun,  '2014-04-10' as tstDate , 2 as monthAdjustment, '2014-02' as expectedResult   union all 
-      select 2,    '2014-04-10',    6, '2013-10'     union all 
-      select 3,    '2012-04-10',    18 , '2010-10'  union all
-	  select 4,    '2012-04-30' ,   6,  '2011-10'    union all
-	  select 5,    '2012-04-01',    1,  '2012-03' union all
-	  select 6,    '2012-04-19',   NULL,  NULL union all
-	  select 7,    '2012-04-19',   -25,  NULL union all 
-	  select 8,    '2012-04-01',     0, '2012-04' union all
-	  select 9,     null,            0,   null 
-
-) 
-,
+	select 1 as tstRun,  '2014-04-10' as tstDate , 2 as monthAdjustment, '2014-02' as expectedResult   union all 
+    select 2,    '2014-04-10',    6, '2013-10'     union all 
+    select 3,    '2012-04-10',    18 , '2010-10'  union all
+    select 4,    '2012-04-30' ,   6,  '2011-10'    union all
+	select 5,    '2012-04-01',    1,  '2012-03' union all
+	select 6,    '2012-04-19',   NULL,  NULL union all
+	select 7,    '2012-04-19',   -25,  NULL union all 
+	select 8,    '2012-04-01',     0, '2012-04' union all
+	select 9,     null,            0,   null 
+	),
 calcData as  (
     select tstRun
 	, tstDate
@@ -197,8 +198,9 @@ The order of the rows must match the order shown here.
 Do not include any books with a null or negative page count. 
 It is possible that the books table might not have any books of one of these size categories; 
 in that case your result set would not have a row for that size category.
- Sample rows only BookSize   
- NumBooks -------- ----------- 
+ Sample rows only 
+ BookSize NumBooks 
+ -------- ----------- 
  Short            29 
  Medium          183 
  ExtraLong        11 
@@ -223,7 +225,137 @@ from myTestData
 group by BookSize, orderRank
 order by orderRank
 
-/*  TASK 04 */ replace this line with your SQL for task 04 GO 
+/*  TASK 04 */
 
-/*  TASK 05 */ replace this line with your SQL for task 05 GO 
+/*Use the BookSize function to produce a display as shown here. 
+Use the books table as the data source for this query. The order of the rows must match the order shown here. 
+ Do not include any books with a null or negative page count. 
+ Display a row for each of the size categories, even if we have no books with a page count for that category; 
+ display a count of 0 for that row. (Hint: consider a virtual table of size categories similar to the calender task 
+ in a previous query .) 
+ Sample rows only 
+ BookSize    NumBooks 
+ -------- ----------- 
+ Short            29 
+ Medium          323 
+ Long              0 
+ ExtraLong        11 
+ SuperLong         5 */
+
+
+with myTestData as (
+	select dbo.booksize(page_count) as BookSize
+	, count(dbo.booksize(page_count)) as NumberBooks
+	, page_count
+	from bkinfo.books
+	group by page_count, dbo.booksize(page_count)
+	having page_count is not null
+	),
+myVirtualTable as (
+	select 'Short' as BookSize union all
+	select 'Medium' union all
+	select  'Long' union all
+	select  'ExtraLong' union all
+	select  'SuperLong' union all
+	select   'SuperDuperLong'
+	),
+myDataTable as (
+	select 
+	B.BookSize
+	, page_count
+	, NumberBooks
+	, case when B.BookSize = 'Short' then 1 
+	when B.BookSize = 'Medium' then 2 
+	when B.BookSize = 'Long' then 3
+	when B.BookSize = 'ExtraLong' then 4
+	when B.BookSize = 'SuperLong' then 5 
+	when B.BookSize = 'SuperDuperLong' then 6 end as 'orderRank'
+	from myTestData A
+	RIGHT JOIN myVirtualTable as B ON B.BookSize = A.BookSize
+	)
+select BookSize
+, count(NumberBooks) as NumBooks
+from myDataTable
+group by BookSize, orderRank
+order by orderRank
+
+
+
+
+/*  TASK 05 */ 
+/*Use the PrevMonth function to display the number of orders we had in the previous two months 
+and the number of customers we have who have at least one order in the previous two months. 
+The term "previous two months" means any date in the two month before the current month. 
+So if you run the query in April 2015, the query will return data for Feb 2015 and March 2015. 
+You need to derive the months based on the system date. 
+Use the tables in the a_books database as the data source for this query. 
+Do not redo the calculations for a previous month in the task- 
+use the function for this calculation. Do not use any variables in the task.  
+NumberOrders NumberCustWithOrders
+ ------------ --------------------          
+ 234                   98 */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+with myTestData as (
+	select dbo.booksize(page_count) as BookSize
+	, count(dbo.booksize(page_count)) as NumberBooks
+	, page_count
+	from bkinfo.books
+	group by page_count, dbo.booksize(page_count)
+	having page_count is not null
+	),
+myVirtualTable as (
+	select 'Short' as BookSize union all
+	select 'Medium' union all
+	select  'Long' union all
+	select  'ExtraLong' union all
+	select  'SuperLong' union all
+	select   'SuperDuperLong'
+),
+myDataTable as (
+select 
+	B.BookSize
+	, page_count
+	, NumberBooks
+	, case when B.BookSize = 'Short' then 1 
+	when B.BookSize = 'Medium' then 2 
+	when B.BookSize = 'Long' then 3
+	when B.BookSize = 'ExtraLong' then 4
+	when B.BookSize = 'SuperLong' then 5 
+	when B.BookSize = 'SuperDuperLong' then 6 end as 'orderRank'
+	from myTestData A
+	RIGHT JOIN myVirtualTable as B ON B.BookSize = A.BookSize
+)
+select BookSize
+, count(NumberBooks) as NumBooks
+from myDataTable
+group by BookSize, orderRank
+order by orderRank
+
+
+select BookSize
+, count(BookSize) as numBooks
+from myDataTable
+group by BookSize, orderRank
+order by orderRank
 
