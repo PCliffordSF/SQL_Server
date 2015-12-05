@@ -5,13 +5,9 @@ use a_books;
 GO
 
 
-exec sp_helpText booksize GO  
+exec sp_helpText booksize
 
-
-/* function source code */ 
-
-
-exec sp_helpText PrevMonth GO  
+exec sp_helpText prevmonth  
 
 
 /*  TASK 00 */ Select getdate(), @@version; GO  
@@ -27,45 +23,51 @@ CREATE  FUNCTION dbo.booksize (
    RETURNS varchar(25) 
 AS
 BEGIN
-/* local variable declaration */
 
-   DECLARE   @Short varchar(25);
+   DECLARE @bksize varchar(25);
    IF (@page_count is null)
    BEGIN
-		SET @Short = 'Input value is missing'
+		SET @bksize = 'Input value is missing'
    END
    IF (@page_count <= 200)
    BEGIN
-		SET    @Short = 'Short'
+		SET    @bksize = 'Short'
    END
-   ELSE
-   IF (@page_count > 200 and @page_count <= 500)
+   ELSE IF (@page_count > 200 and @page_count <= 500)
    BEGIN
-		SET @Short = 'Medium'
+		SET @bksize = 'Medium'
    END
-   ELSE
-   IF (@page_count > 500 and @page_count <= 1200)
+   ELSE IF (@page_count > 500 and @page_count <= 1200)
    BEGIN
-		SET @Short = 'Long'
+		SET @bksize = 'Long'
    END
-   ELSE
-   IF (@page_count > 1200 and @page_count <= 4000)
+   ELSE IF (@page_count > 1200 and @page_count <= 4000)
    BEGIN
-		SET @Short = 'ExtraLong'
+		SET @bksize = 'ExtraLong'
    END
-   ELSE
-   IF (@page_count > 4000 and @page_count <= 10000)
+   ELSE IF (@page_count > 4000 and @page_count <= 10000)
    BEGIN
-		SET @Short = 'SuperLong'
+		SET @bksize = 'SuperLong'
    END
-   ELSE
-   IF (@page_count > 10000)
+   ELSE IF (@page_count > 10000)
    BEGIN
-		SET @Short = 'SuperDUPERLong'
+		SET @bksize = 'SuperDUPERLong'
    END
-   RETURN @Short;
+   RETURN @bksize;
 END;
 GO
+
+/* BookSize function test using a virtual table:  Demonstrate your function by running a query using 
+a virtual test table to supply arguments. Include enough rows to fully demonstrate that your function is correct. 
+The result of running this query should follow this sample run- I have shown only some of the rows. 
+Sample rows only     
+testrun   PageCount actual                    expected 
+----------- ----------- ------------------------- ------------           
+4				199		Short                     Short           
+5				 200	 Short                     Short           
+7			    325		Medium                    Medium          
+11				999		 Long                      Long          
+13				1250	ExtraLong                 ExtraLong */
 
 -- set up testing data for scalar function above. 
 
@@ -84,11 +86,51 @@ from (
    select 12,    4001,     'SuperLong'     union all 
    select 13,    9999,     'SuperLong'     union all 
    select 13,    null,     'Input value is missing'     union all 
-   select 14,    400000000,'SuperDDUPERLong'
-) as tstTbl;  -- turn this into a CTE. I like those better. 
+   select 14,    400000000,'SuperDUPERLong'
+) as tstTbl;  
+
+-- turn this into a CTE. I like those better. 
+
+with myTestData as (
+   select 1 as tstRun,  199 as pageCount, 'Short' as expectedResult  union all 
+   select 2,    200,     'Short'     union all 
+   select 3,    201,     'Medium'     union all 
+   select 5,    499,     'Medium'     union all 
+   select 6,    500,     'Medium'     union all 
+   select 7,    501,     'Long'     union all 
+   select 8,    1200,     'Long'     union all 
+   select 9,    1201,     'ExtraLong'     union all 
+   select 10,    3999,     'ExtraLong'     union all 
+   select 11,    4000,     'ExtraLong'     union all 
+   select 12,    4001,     'SuperLong'     union all 
+   select 13,    9999,     'SuperLong'     union all 
+   select 13,    null,     'Input value is missing'     union all 
+   select 14,    400000000,'SuperDUPERLong'
+) 
+select tstRun
+, pageCount as pageCount
+, dbo.booksize(pageCount) calculatedResult
+, expectedResult
+from myTestData
 
 
 /*  TASK 02 */ 
+
+/*PrevMonth:  function test using a virtual table:  
+Demonstrate your function by running a query using a virtual test table to supply arguments. 
+Include enough rows to fully demonstrate that your function is correct, 
+include tests for nulls and negative values in the virtual table approach. 
+Use the report model shown below. For the Status column, use a case statement to deal with the expected value being null.
+The sample run shows some rows getting a ***Fail **** message because my function is not yet complete.
+Your output should not show fail if your function is correct.  
+testrun date_in       month_in		actual  expected status 
+----------- ---------- ----------- ------- -------- ----------           
+1			NULL                 0 NULL    2015-11  ***FAIL***           
+5			2012-04-01           0 2015-04 2012-04  ***FAIL***           
+6			2012-04-01           1 2012-03 2012-03  pass           
+7			2012-04-30           6 2011-10 2011-10  pass          
+10			2012-04-19        NULL NULL    NULL     pass          
+11			2012-04-19         -25 NULL    NULL     pass */
 
 IF OBJECT_ID (N'dbo.prevmonth') IS NOT NULL
    DROP FUNCTION dbo.prevmonth
@@ -145,14 +187,43 @@ select tstRun as testRun
   when calculatedResult is null and expectedResult is null then 'pass'
 else '***FAIL*** ' end as status
 from calcData
+GO
 
 
+/*  TASK 03 */ 
 
-/*  TASK 03 */ replace this line with your SQL for task 03 GO  
+/*Use the BookSize function to produce a display as shown here. Use the books table as the data source for this query. 
+The order of the rows must match the order shown here.  
+Do not include any books with a null or negative page count. 
+It is possible that the books table might not have any books of one of these size categories; 
+in that case your result set would not have a row for that size category.
+ Sample rows only BookSize   
+ NumBooks -------- ----------- 
+ Short            29 
+ Medium          183 
+ ExtraLong        11 
+ SuperLong         2*/
+
+with myTestData as (
+	select dbo.booksize(page_count) as BookSize
+	, page_count
+	, case when dbo.booksize(page_count) = 'Short' then 1 
+	when dbo.booksize(page_count) = 'Medium' then 2 
+	when dbo.booksize(page_count) = 'Long' then 3
+	when dbo.booksize(page_count) = 'ExtraLong' then 4
+	when dbo.booksize(page_count) = 'SuperLong' then 5 
+	when dbo.booksize(page_count) = 'SuperDuperLong' then 6 end as 'orderRank'
+	from bkinfo.books
+	group by page_count, dbo.booksize(page_count)
+	having page_count is not null
+	)
+select BookSize
+, count(BookSize) as NumBooks
+from myTestData
+group by BookSize, orderRank
+order by orderRank
 
 /*  TASK 04 */ replace this line with your SQL for task 04 GO 
 
 /*  TASK 05 */ replace this line with your SQL for task 05 GO 
-
-
 
