@@ -294,6 +294,46 @@ use the function for this calculation. Do not use any variables in the task.
 NumberOrders NumberCustWithOrders
  ------------ --------------------          
  234                   98 */
+ 
+
+with myTestData as (
+select order_id
+, cust_id
+, order_date
+from bkorders.order_headers
+group by order_id, cust_id, order_date
+having (datepart(m, order_date) = datepart(m, dbo.prevmonth(getdate(), 2))  
+
+OR 
+       datepart(m, order_date) = datepart(m, dbo.prevmonth(getdate(), 1)) 
+	   )
+AND
+	   datepart(yyyy, order_date) = datepart(yyyy, getdate())
+),
+myCustTotal as (
+select count(distinct cust_id) as NumberCustWithOrders
+, 'join_link' as join_link
+from myTestData
+),
+myOrderTotal as (
+select count(order_id) as NumberOrders
+, 'join_link' as join_link
+from myTestData
+)
+select NumberOrders, NumberCustWithOrders
+from myOrderTotal as OT
+JOIN myCustTotal as CT ON CT.join_link = OT.join_link
+
+
+
+
+
+ 
+
+
+
+
+ select datepart(m, dbo.prevmonth(getdate(), 1))
 
 
 
