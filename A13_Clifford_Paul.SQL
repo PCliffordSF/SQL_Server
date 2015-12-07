@@ -302,13 +302,13 @@ select order_id
 , order_date
 from bkorders.order_headers
 group by order_id, cust_id, order_date
-having (datepart(m, order_date) = datepart(m, dbo.prevmonth(getdate(), 2))  
+having (month(order_date) = month(dbo.prevmonth(getdate(), 2))  
 
 OR 
-       datepart(m, order_date) = datepart(m, dbo.prevmonth(getdate(), 1)) 
+       month(order_date) = month(dbo.prevmonth(getdate(), 1)) 
 	   )
 AND
-	   datepart(yyyy, order_date) = datepart(yyyy, getdate())
+	   year(order_date) = year(getdate())
 ),
 myCustTotal as (
 select count(distinct cust_id) as NumberCustWithOrders
@@ -328,18 +328,7 @@ JOIN myCustTotal as CT ON CT.join_link = OT.join_link
 
 
 
- 
-
-
-
-
- select datepart(m, dbo.prevmonth(getdate(), 1))
-
-
-
-
-
-
+-------------------------- scratch
 
 
 
