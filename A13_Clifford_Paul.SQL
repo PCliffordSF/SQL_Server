@@ -312,17 +312,16 @@ AND
 ),
 myCustTotal as (
 select count(distinct cust_id) as NumberCustWithOrders
-, 'join_link' as join_link
 from myTestData
 ),
 myOrderTotal as (
 select count(order_id) as NumberOrders
-, 'join_link' as join_link
 from myTestData
 )
-select NumberOrders, NumberCustWithOrders
-from myOrderTotal as OT
-JOIN myCustTotal as CT ON CT.join_link = OT.join_link
+select NumberOrders
+, NumberCustWithOrders
+from myOrderTotal
+CROSS JOIN myCustTotal
 
 
 
@@ -330,8 +329,7 @@ JOIN myCustTotal as CT ON CT.join_link = OT.join_link
 
 -------------------------- scratch
 
--- trying different methods for number 5. 
-
+GO
 with myTestData as (
 select order_id
 , cust_id
@@ -348,17 +346,21 @@ AND
 ),
 myCustTotal as (
 select count(distinct cust_id) as NumberCustWithOrders
+, 'join_link' as join_link
 from myTestData
 ),
 myOrderTotal as (
 select count(order_id) as NumberOrders
+, 'join_link' as join_link
 from myTestData
 )
-	select NumberOrders
-	from myOrderTotal
-UNION ALL
-	select NumberCustWithOrders
-	from myCustTotal 
+select NumberOrders, NumberCustWithOrders
+from myOrderTotal as OT
+JOIN myCustTotal as CT ON CT.join_link = OT.join_link
+
+-- trying different methods for number 5. 
+
+
 
 
 
