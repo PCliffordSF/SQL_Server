@@ -330,7 +330,35 @@ JOIN myCustTotal as CT ON CT.join_link = OT.join_link
 
 -------------------------- scratch
 
+-- trying different methods for number 5. 
 
+with myTestData as (
+select order_id
+, cust_id
+, order_date
+from bkorders.order_headers
+group by order_id, cust_id, order_date
+having (month(order_date) = month(dbo.prevmonth(getdate(), 2))  
+
+OR 
+       month(order_date) = month(dbo.prevmonth(getdate(), 1)) 
+	   )
+AND
+	   year(order_date) = year(getdate())
+),
+myCustTotal as (
+select count(distinct cust_id) as NumberCustWithOrders
+from myTestData
+),
+myOrderTotal as (
+select count(order_id) as NumberOrders
+from myTestData
+)
+	select NumberOrders
+	from myOrderTotal
+UNION ALL
+	select NumberCustWithOrders
+	from myCustTotal 
 
 
 
