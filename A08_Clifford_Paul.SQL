@@ -122,7 +122,7 @@ select count(ex_id) as'Number of Exams'
 , count(distinct an_id) as 'Number of Animals'
 from vt_exam_headers
 where datepart(year,dateadd(month, -3 ,getdate())) =  datepart(year, ex_date) 
-AND datepart(quarter,dateadd(month, -3 ,getdate())) =  datepart(quarter, ex_date) ;
+AND datepart(quarter,dateadd(month, -3 ,getdate())) =  datepart(quarter, ex_date)
 GO
 
 
@@ -168,6 +168,7 @@ Cats		   Dogs    Rodents	 Reptiles All Animals
 select count(case when an_type = 'cat' then an_type end) as 'Kitty Cats'
 , count(case when an_type = 'dog' then an_type end) as 'Doggies'
 , count(case when an_type in ('hamster', 'capybara', 'porcupine', 'dormouse') then an_type end) as 'Rodents'
+, count(case when an_type in ('snake', 'chelonian', 'crocodilian', 'lizard') then an_type end) as 'Scalies'
 , count(an_type) as 'All Animals'
 from vt_animals;
 GO
@@ -204,9 +205,9 @@ AnimalID an_type                   an_name                   MostRecentExam
 
 select A.an_id
 , an_type
-, coalesce(an_name, 'no name') 
+, coalesce(an_name, 'no name') as an_name
 , coalesce((cast(datepart(mm , max(ex_date)) as varchar) + '/' + cast(datepart(dd , max(ex_date)) as varchar) + 
-'/' + cast(datepart(yyyy , max(ex_date)) as varchar)), 'No Exam') as MostRecentExam
+'/' + cast(datepart(yyyy , max(ex_date)) as varchar)), 'No Exams') as MostRecentExam
 from vt_animals as A
 LEFT JOIN vt_exam_headers as EH ON EH.an_id = A.an_id
 group by A.an_id, an_type, an_name
@@ -249,3 +250,5 @@ select datepart(quarter, @date) as Q
 select datepart(day, @date) as D
 select datepart(month, @date) as M
 select datepart(year, @date) as Y GO
+
+select datename(dw,getdate());

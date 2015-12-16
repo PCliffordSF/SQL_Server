@@ -43,22 +43,22 @@ where exists (
     select 'X'
 	from bkorders.order_headers as BKOH
 	where BKOH.cust_id = BKC.cust_id and
-		  datepart(yyyy,order_date) = datepart(yyyy, getdate()) and 
-		  datepart(m, order_date) = 1		  
+		  year(order_date) = year(getdate()) and 
+		  month(order_date) = 1		  
     )
 and exists (
     select 'X'
 	from bkorders.order_headers as BKOH
 	where BKOH.cust_id = BKC.cust_id and
-		  datepart(yyyy,order_date) = datepart(yyyy, getdate()) and 
-		  datepart(m, order_date) = 2		  
+		  year(order_date) = year(getdate()) and 
+		  month(order_date) = 2		  
     )
 and exists (
     select 'X'
 	from bkorders.order_headers as BKOH
 	where BKOH.cust_id = BKC.cust_id and
-		  datepart(yyyy,order_date) = datepart(yyyy, getdate()) and 
-		  datepart(m, order_date) = 3		  
+		  year(order_date) = year(getdate()) and 
+		  month(order_date) = 3		  
     )
 order by cust_id
 GO
@@ -132,23 +132,42 @@ select order_date
     from bkorders.customers as BKC
 	where BKC.cust_id = BKOH.cust_id
   ) as customer
-  from bkorders.order_headers as BKOH
-  where  datepart(yyyy, order_date) = datepart(yyyy, dateadd(yyyy,-1,getdate()))
-         and 
-		 datepart(m, order_date) in (1, 2, 3)
+, (
+    isnull (
+       cast((select sum(quantity)
+	   from bkorders.order_details as BKOD
+	   where BKOD.order_id = BKOH.order_id) as varchar(18))
+	   ,
+	   'No books ordered'
+	)        
+  ) as NumberBooks
+, (
+    isnull (
+       cast((select sum(quantity*order_price)
+	   from bkorders.order_details as BKOD
+	   where BKOD.order_id = BKOH.order_id) as varchar(18))
+	   ,
+	   'No books ordered'
+	)        
+  ) as NumberBooks
+from bkorders.order_headers as BKOH
+where year(order_date) = year(dateadd(yyyy,-1,getdate()))
+and 
+      month(order_date) in (1, 2, 3)
 order by order_date
 GO
 
 /*  TASK 06 */
 /*Display the customer id and last name for customers with at least three and no more than five
  orders last year. Sort by the customer id.*/
+
 select cust_id
 , cust_name_last
 from bkorders.customers as BKC
 where exists (
         select 'X'
         from bkorders.order_headers as BKOH
-        where datepart(yyyy, order_date) = datepart(yyyy, dateadd(yyyy, -1, getdate()))
+        where year(order_date) = year(dateadd(yyyy, -1, getdate()))
 and 
         BKOH.cust_id = BKC.cust_id
         group by cust_id
@@ -170,18 +189,18 @@ from bkorders.customers as BKC
 where (
     select count(order_id)
     from bkorders.order_headers as BKOH
-    where datepart(yyyy, order_date) = datepart(yyyy, dateadd(yyyy, -1, getdate()))
+    where year(order_date) = year(dateadd(yyyy, -1, getdate()))
 and 
-    datepart(m, order_date) in (1, 2, 3)
+    month(order_date) in (1, 2, 3)
 and 
     BKOH.cust_id = BKC.cust_id
     group by cust_id
 	) >= (
     select count(order_id)
     from bkorders.order_headers as BKOH
-    where datepart(yyyy, order_date) = datepart(yyyy, getdate())
+    where year(order_date) = year(getdate())
 and 
-    datepart(m, order_date) in (1, 2, 3)
+    month(order_date) in (1, 2, 3)
 and
 	BKOH.cust_id = BKC.cust_id
     group by cust_id

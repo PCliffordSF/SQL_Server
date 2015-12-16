@@ -25,8 +25,6 @@ select  datax.value('(//bk_id)[1]', 'varchar(18)')  as BookID
 , datax.value('(//bk_subject)[1]', 'varchar(18)') as Subject_1
 , datax.value('(//bk_subject)[2]', 'varchar(18)') as Subject_2
 from xml_A14_books;
-
-
 GO
 
 /*  TASK 02 */
@@ -37,7 +35,6 @@ where the first subject area is Fiction. Use the value function in the filter on
 select  datax.value('(//bk_id)[1]', 'varchar(18)')  as BookID
 , datax.value('(//bk_title)[1]', 'varchar(18)') as Title
 , datax.value('(//bk_price)[1]', 'decimal(8,2)') as Price
-, datax.value('(//bk_subject)[1]', 'varchar(18)') as Subject
 from xml_A14_books
 where datax.value('(//bk_subject)[1]', 'varchar(18)') = 'Fiction';
 GO
@@ -60,7 +57,9 @@ select  datax.value('(//bk_id)[1]', 'varchar(18)')  as BookID
  ISNULL(datax.value('(//bk_subject)[2]', 'varchar(18)'), ' ') +
  ISNULL(datax.value('(//bk_subject)[3]', 'varchar(18)'), '') as AllSubject
 from xml_A14_books
-where datax.value('(//bk_price)[1]', 'decimal(8,2)') > 55;
+where datax.value('(//bk_subject)[1]', 'varchar(18)') = 'Fiction'
+AND 
+	  datax.value('(//bk_price)[1]', 'decimal(8,2)') > 55;
 GO
 
 
@@ -75,11 +74,10 @@ Do not use the value function in the filter. */
 select  datax.value('(//bk_id)[1]', 'varchar(18)')  as BookID
 , datax.value('(//bk_title)[1]', 'varchar(18)') as Title
 , datax.value('(//bk_price)[1]', 'decimal(8,2)') as Price
-, ISNULL(datax.value('(//bk_subject)[1]', 'varchar(18)'), '') + ' ' +
- ISNULL(datax.value('(//bk_subject)[2]', 'varchar(18)'), ' ') + ' ' +
- ISNULL(datax.value('(//bk_subject)[3]', 'varchar(18)'), '') as AllSubject
 from xml_A14_books
-where datax.exist('(/book)[bk_price[1] gt 30.5]') = 1
+where datax.exist('/book[bk_price[1] gt 30.5]') = 1
+AND
+datax.exist('/book[bk_subject[1] eq "Fiction"]') =1
 
 
 
@@ -201,10 +199,9 @@ select datax.value('(//bk_price)[1]', 'decimal(8,2)') as 'Price'
 , datax.value('(//bk_subject)[1]', 'varchar(18)') as 'Subject'
 from xml_A14_books
 )
-select subject
+select ISNULL(subject, 'All Subjects') as 'Subject'
 , cast(avg(Price) as decimal(8,2)) as AvgPrice
 from averagePriceData
-group by subject
-
+group by rollup (Subject)
 GO
 

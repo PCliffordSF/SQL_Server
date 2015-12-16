@@ -1,6 +1,6 @@
 /* Paul Clifford */
 
-use    -- db.name;
+use    a_books;
 GO;
 /*  TASK 00 */
 Select getdate(), @@servername as ServerName,  @@version as VersionNumber;
@@ -92,7 +92,7 @@ with rankings as (
 	select  RANK() over (order by round(sum(quantity*order_price),0) desc) as SalesRanking
 	, BKB.book_id
 	, BKB.title
-	, round(sum(quantity*order_price),0) as OrderTotal
+	, round(sum(quantity*order_price),-2) as OrderTotal
 from bkinfo.books as BKB
 INNER JOIN bkorders.order_details as BKOD ON BKOD.book_id = BKB.book_id
 group by BKB.book_id, BKB.title
@@ -264,13 +264,14 @@ from (
    ) tbl2
 where  dtm <= @stop
 ), marchTotal as (
+
 	select BKOH.order_date
-	, quantity
-	, order_price
     , sum(quantity*order_price) as TotalSales
 	from bkorders.order_headers as BKOH
 	INNER JOIN bkorders.order_details BKOD ON BKOD.order_id = BKOH.order_id 
 	group by order_date, quantity, order_price
+
+
 ), calJoin as (
 select dtm as MarchDates
 , case when sum(TotalSales) is null then 0 else sum(TotalSales) end as TotalSales
@@ -280,11 +281,10 @@ group by TotalSales, dtm
 )
 select t1.MarchDates
 , t1.TotalSales as TotalSales
---, t2.TotalSales as t2total
 , sum(t2.TotalSales) as '5 DaySum' 
 , cast(sum(t2.TotalSales) as decimal(10 ,2))/5 as '5 Day Avg'
 from calJoin as t1
-JOIN calJoin as t2 ON t2.MarchDates < dateadd(dd, 2, t1.MarchDates)
+JOIN calJoin as t2 ON t2.MarchDates <= dateadd(dd, 2, t1.MarchDates)
 AND t2.MarchDates >= dateadd(dd, -2, t1.MarchDates)
 group by t1.MarchDates, t1.TotalSales
 order by t1.MarchDates
